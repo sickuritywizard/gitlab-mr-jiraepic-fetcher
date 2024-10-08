@@ -57,7 +57,7 @@ def Download_Code_From_MR(mr_url):
 
 def Download_Code_From_Commit_Url(commit_url):
     global GITLAB_API_TOKEN
-    parsed_url = urlparse(mr_url)
+    parsed_url = urlparse(commit_url)
     gitlab_api = f"{parsed_url.scheme}://{parsed_url.netloc}/api/v4/"
                   #https://gitlab.host.com/api/v4"
 
@@ -105,34 +105,52 @@ def beautify_file(filepath):
     print(colored(f"[-] File:  {filepath}","white"))
 
 
+def verify_gitlab_token(gitlab_url):
+    global GITLAB_API_TOKEN
+
+    #Get Base URL
+    parsed_url = urlparse(gitlab_url)
+    GITLAB_BASE_URL = f"{parsed_url.scheme}://{parsed_url.netloc}"
+
+    git_verify_url = f"{GITLAB_BASE_URL}/api/v4/personal_access_tokens/self"
+    headers = {"PRIVATE-TOKEN" : GITLAB_API_TOKEN}
+    res = requests.get(git_verify_url,headers=headers)
+    if res.status_code != 200:
+        exit(colored(f"[X] Gitlab Token is Invalid: {res.status_code}","red"))
+    print(colored("[-] Gitlab Token successfully validated","magenta"))
+
+
+
 def main():
     global GITLAB_API_TOKEN
     args = get_args()
     GITLAB_API_TOKEN = args.gitlab_token or os.getenv("GITLAB_API_TOKEN")
 
+    curr_dir = os.getcwd()
     os.makedirs("results", exist_ok=True)
+    os.chdir("results")
 
     if args.commit_url:
-        os.chdir("results")
+        verify_gitlab_token(args.commit_url)
         Download_Code_From_Commit_Url(args.commit_url)
         #Example_Commit_URL = "https://gitlab.gg.com/projectname/subproject/-/commit/commithash"
 
     elif args.mr_url:
-        os.chdir("results")
+        verify_gitlab_token(args.mr_url)
         Download_Code_From_MR(args.mr_url)
         #Example_MR_URL = "https://gitlab.gg.com/projectname/subproject/-/merge_requests/177"
 
     elif args.commit_file:
-        with open(args.commit_file, "r") as fileptr:
-            os.chdir("results")
+        with open(os.path.join(curr_dir, args.commit_file), "r") as fileptr:
             urls = fileptr.readlines()
+            verify_gitlab_token(urls[0].strip())
             for commit_url in urls:  
                 Download_Code_From_Commit_Url(commit_url.strip())
 
     elif args.mr_file:
-        with open(args.mr_file, "r") as fileptr:
-            os.chdir("results")
+        with open(os.path.join(curr_dir, args.mr_file), "r") as fileptr:
             urls = fileptr.readlines()
+            verify_gitlab_token(urls[0].strip())
             for commit_url in urls:        
                 Download_Code_From_MR(commit_url.strip())
 

@@ -172,9 +172,9 @@ def prechecks(GITLAB_BASE_URL, JIRA_BASE_URL,GITLAB_API_TOKEN,JIRA_API_TOKEN):
         print(colored("[-] Gitlab Token verification Skipped as Gitlab Host (-gh) not provided","red"))
 
     #JIRA TOKEN VERIFY
-    jiraVerifyURL = f"{JIRA_BASE_URL}/rest/api/3/myself"
+    git_verify_url = f"{JIRA_BASE_URL}/rest/api/3/myself"
     headers = {"Authorization" : f"Bearer {JIRA_API_TOKEN}", "Accept": "application/json"}
-    res = requests.get(jiraVerifyURL,headers=headers)
+    res = requests.get(git_verify_url,headers=headers)
     if "X-AUSERNAME" in res.headers and res.headers["X-AUSERNAME"] == "anonymous":
         exit(colored(f"[X] Jira Token is invalid: {res.headers['X-AUSERNAME']}","red"))
     print(colored(f"[-] Jira Token successfully validated: {res.headers['X-AUSERNAME']}","magenta"))
