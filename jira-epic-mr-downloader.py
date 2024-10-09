@@ -57,8 +57,8 @@ def Get_Jira_Object(jira_url):
 
 def Get_All_Issues_From_Epic(jira,jira_epic_link):
     global FUNC_COMPLETED
-    # print_progress_thread = threading.Thread(target=print_progress, args=("[*] Fetching All Jira Issues",))
-    # print_progress_thread.start()
+    print_progress_thread = threading.Thread(target=print_progress, args=("[*] Fetching All Jira Issues",))
+    print_progress_thread.start()
 
     epic_name = jira_epic_link.split('/')[-1]
     jql_query = f'"Epic Link" = {epic_name}'
