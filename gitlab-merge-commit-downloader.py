@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import os
+from heapq import merge
+
 import requests
 from urllib.parse import urlparse, quote
 from termcolor import colored
@@ -18,6 +20,7 @@ def get_args():
     parser.add_argument('-mu','--merge-url',dest='mr_url', help="Merge Request URL")
     parser.add_argument('-mf','--merge-file',dest='mr_file', help="Merge Request File")
     parser.add_argument('-t','--token',dest='gitlab_token',help="Gitlab Token (Optional: Fetched from Env: GITLAB_API_TOKEN)")
+    parser.add_argument('-ff','--full-file',action="store_true",dest='full_file',help="Download Complete File (Default: Downloads only diff)",default=False)
     args = parser.parse_args()
 
     if not args.gitlab_token and not os.getenv("GITLAB_API_TOKEN"):
@@ -56,7 +59,7 @@ def Download_Code_From_MR(mr_url):
 
 
 def Download_Code_From_Commit_Url(commit_url):
-    global GITLAB_API_TOKEN
+    global GITLAB_API_TOKEN, DOWNLOAD_COMPLETE_FILE
     parsed_url = urlparse(commit_url)
     gitlab_api = f"{parsed_url.scheme}://{parsed_url.netloc}/api/v4/"
                   #https://gitlab.host.com/api/v4"
@@ -64,7 +67,7 @@ def Download_Code_From_Commit_Url(commit_url):
     # url = "https://gitlab.gg.com/projectname/subproject/-/commit/commithash"
     url_parts = commit_url.split("/")
     project_id = url_parts[3] + "%2F" + url_parts[4]
-    commit_hash= url_parts[7]
+    commit_hash= url_parts[7].split("?")[0]
 
     api_url = f"{gitlab_api}projects/{project_id}/repository/commits/{commit_hash}/diff"
 
@@ -74,7 +77,16 @@ def Download_Code_From_Commit_Url(commit_url):
 
     for item in response_json:
         filepath = item["new_path"]
-        codediff = item["diff"]
+
+        if DOWNLOAD_COMPLETE_FILE:
+            encoded_filepath = quote(filepath, safe='')       #filepath=/src/something/gg.java
+            raw_file_url = f'{gitlab_api}/projects/{project_id}/repository/files/{encoded_filepath}/raw?ref={commit_hash}'
+            # print(raw_file_url)
+            codediff = requests.get(raw_file_url,headers=headers).text
+
+        else:
+            codediff = item["diff"]
+
         save_diff_to_file(filepath, codediff)
 
 
@@ -102,7 +114,7 @@ def beautify_file(filepath):
     with open(filepath,"w") as diff_file:
         diff_file.write(processed_file_content)
 
-    print(colored(f"[-] File:  {filepath}","white"))
+    print(colored(f"|--> File: ","yellow"),colored(f"{filepath}","white"))
 
 
 def verify_gitlab_token(gitlab_url):
@@ -117,18 +129,22 @@ def verify_gitlab_token(gitlab_url):
     res = requests.get(git_verify_url,headers=headers)
     if res.status_code != 200:
         exit(colored(f"[X] Gitlab Token is Invalid: {res.status_code}","red"))
-    print(colored("[-] Gitlab Token successfully validated","magenta"))
+    print(colored("[-] Gitlab Token successfully validated","light_magenta"))
 
 
 
 def main():
     global GITLAB_API_TOKEN
+    global DOWNLOAD_COMPLETE_FILE
+
     args = get_args()
     GITLAB_API_TOKEN = args.gitlab_token or os.getenv("GITLAB_API_TOKEN")
 
     curr_dir = os.getcwd()
     os.makedirs("results", exist_ok=True)
     os.chdir("results")
+
+    DOWNLOAD_COMPLETE_FILE = args.full_file
 
     if args.commit_url:
         verify_gitlab_token(args.commit_url)
@@ -144,23 +160,25 @@ def main():
         with open(os.path.join(curr_dir, args.commit_file), "r") as fileptr:
             urls = fileptr.readlines()
             verify_gitlab_token(urls[0].strip())
-            for commit_url in urls:  
-                Download_Code_From_Commit_Url(commit_url.strip())
+            for commit_url in urls:
+                commit_url = commit_url.strip()
+                print(colored(f"\n[-] {commit_url}","cyan"))
+                Download_Code_From_Commit_Url(commit_url)
 
     elif args.mr_file:
         with open(os.path.join(curr_dir, args.mr_file), "r") as fileptr:
             urls = fileptr.readlines()
             verify_gitlab_token(urls[0].strip())
-            for commit_url in urls:        
-                Download_Code_From_MR(commit_url.strip())
+            for merge_url in urls:
+                merge_url = merge_url.strip()
+                print(colored(f"\n[-] {merge_url}","cyan"))
+                Download_Code_From_MR(merge_url)
 
 main()
 
 
 '''
 #TODO
-Getting the complete file (raw_url). Issue: Some URLs are showing 404
-encoded_filepath = quote(filepath, safe='')       #filepath=/src/something/gg.java
-raw_url = f'{GITLAB_API}/projects/{project_id}/repository/files/{filepath}/raw?ref={commit_hash}'
-
+1)Add support for full file download even in MergeRequests
+2)Test with multiple Commit requests, as last time it was given empty response for few files
 '''

@@ -16,7 +16,7 @@ import threading,time
 from urllib.parse import urlparse
 
 
-OUTPUT_FOLDER = "Jira-007-output"
+OUTPUT_FOLDER = "jira-007-output"
 FUNC_COMPLETED = False
 
 def print_progress(string):
@@ -83,24 +83,30 @@ def Get_Git_Commit_Link_From_Issue(issueKey, epic_name):
 
     response = requests.get(api_url,headers=headers)
     json_data = json.loads(response.text)
-    for item in json_data["fields"]["comment"]["comments"]:
-        mergeReqBody = item["body"]
-        try:
-            if "merge_requests" in mergeReqBody:
-                pattern = r"a merge request\|([^]]+)"
-                result = re.search(pattern, mergeReqBody)
-                mr_url = result.group(1)
-                print(colored(f"\n[-] {mr_url}","magenta"))
-                Download_Code_From_MR(mr_url,epic_name)
-        except Exception as e:
-            print(colored(f"ERROR: {e}","red"))
+
+
+    try:
+        for item in json_data["fields"]["comment"]["comments"]:
+            mergeReqBody = item["body"]
+            try:
+                if "merge_requests" in mergeReqBody:
+                    pattern = r"a merge request\|([^]]+)"
+                    result = re.search(pattern, mergeReqBody)
+                    mr_url = result.group(1)
+                    print(colored(f"\n[-] {mr_url}","magenta"))
+                    Download_Code_From_MR(mr_url,epic_name)
+            except Exception as e:
+                print(colored(f"ERROR: {e}","red"))
+    except Exception as e:
+        print(colored(f"ERROR: {e}","red"))
 
 
 def Download_Code_From_MR(mr_url,epic_name):
     global GITLAB_API_TOKEN    
 
     parsed_url = urlparse(mr_url)
-    GITLAB_BASE_URL = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    #GITLAB_BASE_URL = f"{parsed_url.scheme}://{parsed_url.netloc}"   #Uncomment this and delete below line later
+    GITLAB_BASE_URL = "https://gitlab-vmw.devops.broadcom.net"        #Hardcoding for now as some epics still using old host
     GITLAB_API = f"{GITLAB_BASE_URL}/api/v4/"
 
     # url = "https://gitlab.sickuritywizard.com/baseproject/projectName/-/merge_requests/177"
