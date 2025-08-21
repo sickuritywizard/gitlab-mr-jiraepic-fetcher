@@ -34,9 +34,9 @@ def get_args():
 
 
 def Download_Code_From_MR(mr_url):
-    global GITLAB_API_TOKEN
+    global GITLAB_API_TOKEN, DOWNLOAD_COMPLETE_FILE
     parsed_url = urlparse(mr_url)
-    gitlab_api = f"{parsed_url.scheme}://{parsed_url.netloc}/api/v4/"
+    gitlab_api = f"{parsed_url.scheme}://{parsed_url.netloc}/api/v4"
                   #https://gitlab.host.com/api/v4"
 
     # url = "https://gitlab.gg.com/projectname/subproject/-/merge_requests/177"
@@ -45,23 +45,35 @@ def Download_Code_From_MR(mr_url):
     merge_request_id = url_parts[7]
 
     # Build API URL for merge request changes
-    api_url = f"{gitlab_api}projects/{project_id}/merge_requests/{merge_request_id}/changes"
+    api_url = f"{gitlab_api}/projects/{project_id}/merge_requests/{merge_request_id}/changes"
 
     headers = {"PRIVATE-TOKEN": GITLAB_API_TOKEN}
     response = requests.get(api_url, headers=headers)
     response_json = response.json()
 
+    source_branch = response_json["source_branch"]
+
     changes = response_json["changes"]
     for change in changes:
         filepath = change['new_path']
-        diff = change['diff']
-        save_diff_to_file(filepath,diff)
+
+        #TODO: Download Complete File (Not Working)
+        # if DOWNLOAD_COMPLETE_FILE:
+        #     encoded_filepath = quote(filepath, safe='')       #filepath=/src/something/gg.java
+        #     raw_file_url = f'{gitlab_api}/projects/{project_id}/repository/files/{encoded_filepath}/raw?ref={source_branch}'
+        #     print(raw_file_url)
+        #     codediff = requests.get(raw_file_url,headers=headers).text
+        # else:
+            # codediff = change["diff"]
+
+        codediff = change["diff"]
+        save_diff_to_file(filepath, codediff)
 
 
 def Download_Code_From_Commit_Url(commit_url):
     global GITLAB_API_TOKEN, DOWNLOAD_COMPLETE_FILE
     parsed_url = urlparse(commit_url)
-    gitlab_api = f"{parsed_url.scheme}://{parsed_url.netloc}/api/v4/"
+    gitlab_api = f"{parsed_url.scheme}://{parsed_url.netloc}/api/v4"
                   #https://gitlab.host.com/api/v4"
 
     # url = "https://gitlab.gg.com/projectname/subproject/-/commit/commithash"
@@ -69,7 +81,8 @@ def Download_Code_From_Commit_Url(commit_url):
     project_id = url_parts[3] + "%2F" + url_parts[4]
     commit_hash= url_parts[7].split("?")[0]
 
-    api_url = f"{gitlab_api}projects/{project_id}/repository/commits/{commit_hash}/diff"
+    api_url = f"{gitlab_api}/projects/{project_id}/repository/commits/{commit_hash}/diff"
+    # print(api_url)
 
     headers = {"PRIVATE-TOKEN": GITLAB_API_TOKEN}
     response = requests.get(api_url, headers=headers)
@@ -81,7 +94,7 @@ def Download_Code_From_Commit_Url(commit_url):
         if DOWNLOAD_COMPLETE_FILE:
             encoded_filepath = quote(filepath, safe='')       #filepath=/src/something/gg.java
             raw_file_url = f'{gitlab_api}/projects/{project_id}/repository/files/{encoded_filepath}/raw?ref={commit_hash}'
-            # print(raw_file_url)
+            print(raw_file_url)
             codediff = requests.get(raw_file_url,headers=headers).text
 
         else:
