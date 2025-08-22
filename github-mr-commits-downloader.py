@@ -39,7 +39,7 @@ def get_github_api_baseurl(github_url):
     return github_api_base_url
 
 
-def Download_Code_From_PR_Url(pr_url):
+def download_code_from_pr_url(pr_url):
     global GITHUB_API_TOKEN
 
     #Get Base URL
@@ -54,12 +54,12 @@ def Download_Code_From_PR_Url(pr_url):
     #Example PR URL: https://github.host.com/api/v3/repos/ORGNAME/REPONAME/pulls/211
 
 
-def Download_Code_From_MR(mr_url):
+def download_code_from_MR(mr_url):
     pass
 
 
 
-def Download_Code_From_Commit_Url(commit_url):
+def download_code_from_commit_url(commit_url):
     pass
 
 
@@ -119,17 +119,17 @@ def main():
 
     if args.pullrequest_url:
         verify_github_token(args.pullrequest_url)
-        Download_Code_From_PR_Url(args.pullrequest_url)
+        download_code_from_pr_url(args.pullrequest_url)
         #Example_Commit_URL = "https://github.host.com/projectname/subproject/-/commit/commithash"
 
     if args.commit_url:
         verify_github_token(args.commit_url)
-        Download_Code_From_Commit_Url(args.commit_url)
+        download_code_from_commit_url(args.commit_url)
         #Example_Commit_URL = "https://github.host.com/projectname/subproject/-/commit/commithash"
 
     elif args.mr_url:
         verify_github_token(args.mr_url)
-        Download_Code_From_MR(args.mr_url)
+        download_code_from_MR(args.mr_url)
         #Example_MR_URL = "https://github.host.com/projectname/subproject/-/merge_requests/177"
 
     elif args.commit_file:
@@ -139,7 +139,7 @@ def main():
             for commit_url in urls:
                 commit_url = commit_url.strip()
                 print(colored(f"\n[-] {commit_url}","cyan"))
-                Download_Code_From_Commit_Url(commit_url)
+                download_code_from_commit_url(commit_url)
 
     elif args.mr_file:
         with open(os.path.join(curr_dir, args.mr_file), "r") as fileptr:
@@ -148,7 +148,7 @@ def main():
             for merge_url in urls:
                 merge_url = merge_url.strip()
                 print(colored(f"\n[-] {merge_url}","cyan"))
-                Download_Code_From_MR(merge_url)
+                download_code_from_MR(merge_url)
 
 main()
 
