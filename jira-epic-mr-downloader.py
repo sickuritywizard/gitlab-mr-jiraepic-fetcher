@@ -105,8 +105,7 @@ def Download_Code_From_MR(mr_url,epic_name):
     global GITLAB_API_TOKEN    
 
     parsed_url = urlparse(mr_url)
-    #GITLAB_BASE_URL = f"{parsed_url.scheme}://{parsed_url.netloc}"   #Uncomment this and delete below line later
-    GITLAB_BASE_URL = "https://gitlab-vmw.devops.broadcom.net"        #Hardcoding for now as some epics still using old host
+    GITLAB_BASE_URL = f"{parsed_url.scheme}://{parsed_url.netloc}"   #Uncomment this and delete below line later
     GITLAB_API = f"{GITLAB_BASE_URL}/api/v4/"
 
     # url = "https://gitlab.sickuritywizard.com/baseproject/projectName/-/merge_requests/177"

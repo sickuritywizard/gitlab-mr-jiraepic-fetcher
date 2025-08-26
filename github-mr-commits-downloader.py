@@ -2,11 +2,15 @@
 
 import os
 from heapq import merge
+from math import trunc
 
 import requests
 from urllib.parse import urlparse, quote
+
+from gitdb.util import exists
 from termcolor import colored
 import argparse,re
+import base64
 import pdb
 
 MR_OUTPUT_FOLDER = "MR-Download-Results"
@@ -20,12 +24,12 @@ def get_args():
     parser.add_argument('-cf','--commit-file',dest='commit_file', help="Commit Request File")
     parser.add_argument('-mu','--merge-url',dest='mr_url', help="Merge Request URL")
     parser.add_argument('-mf','--merge-file',dest='mr_file', help="Merge Request File")
-    parser.add_argument('-t','--token',dest='github_token',help="Gitlab Token (Optional: Fetched from Env: GITHUB_API_TOKEN)")
+    parser.add_argument('-t','--token',dest='github_token',help="Github Token (Optional: Fetched from Env: GITHUB_API_TOKEN)")
     parser.add_argument('-ff','--full-file',action="store_true",dest='full_file',help="Download Complete File (Default: Downloads only diff)",default=False)
     args = parser.parse_args()
 
     if not args.github_token and not os.getenv("GITHUB_API_TOKEN"):
-        exit(colored("[-] Error: Could not fetch Env Variable GITLAB_API_TOKEN. Please set it or provide argument -t <token>","red"))
+        exit(colored("[-] Error: Could not fetch Env Variable GITHUB_API_TOKEN. Please set it or provide argument -t <token>","red"))
 
     if not args.commit_url and not args.commit_file and not args.mr_url and not args.mr_file and not args.pullrequest_url:
         exit(colored("[-] Error: Either commit_url or commit_file or mr_url or mr_file should be provided","red"))
@@ -38,8 +42,49 @@ def get_github_api_baseurl(github_url):
     github_api_base_url = f"{parsed_url.scheme}://{parsed_url.netloc}/api/v3"  #https://github.host.com/api/v3
     return github_api_base_url
 
-
 def download_code_from_pr_url(pr_url):
+    global GITHUB_API_TOKEN
+
+    #Create Results Folder
+    pr_url_dir = pr_url.split("/")
+    results_dir = f"{pr_url_dir[4]}_{pr_url_dir[5]}_{pr_url_dir[-1]}"     #org_repo_pullnumber
+    try:
+        os.mkdir(results_dir)
+    except Exception as e:
+        exit(f"[X] Directory Already Exists: {results_dir}")
+    os.chdir(results_dir)
+
+    #Get Base URL
+    base_url = get_github_api_baseurl(pr_url)
+    pr_uri_list = pr_url.split("/")[3:]
+    org,repo,pulls,pull_number = pr_uri_list[0],pr_uri_list[1],"pulls",pr_uri_list[3]  #URL has pull, but api requires pulls
+    fetch_pr_api = f"{base_url}/repos/{org}/{repo}/{pulls}/{pull_number}/files"
+    headers = {"Authorization": f"token {GITHUB_API_TOKEN}", "Accept": "application/vnd.github.v3.diff"}
+    response = requests.get(fetch_pr_api, headers=headers).json()
+
+    count = 0
+    for item in response:
+        count+=1
+        file_name = item.get("filename")
+        changed_file_sha = item.get("sha")
+
+        fetch_file_api = f"{base_url}/repos/vcf/mops/git/blobs/{changed_file_sha}"
+        response = requests.get(fetch_file_api, headers=headers).json()
+        file_content_base64 = response.get("content").replace("\n", "")
+        file_content = base64.b64decode(file_content_base64).decode()
+        print(f"[File]: {file_name}")
+
+        folder = os.path.dirname(file_name)
+        os.makedirs(folder, exist_ok=True)
+        with open(file_name, "w") as fp:
+            fp.write(file_content)
+
+    print(f"[-] Total Files Downloaded: {count}")
+    #Example PR URL: https://github.host.com/ORGNAME/REPONAME/pulls/pullnumber
+
+
+#Fetches all diff as a single response
+def download_diff_from_pr_url(pr_url):
     global GITHUB_API_TOKEN
 
     #Get Base URL
@@ -50,8 +95,6 @@ def download_code_from_pr_url(pr_url):
     headers = {"Authorization": f"token {GITHUB_API_TOKEN}", "Accept": "application/vnd.github.v3.diff"}
     response = requests.get(final_api_url, headers=headers)
     print(response.text)
- 
-    #Example PR URL: https://github.host.com/api/v3/repos/ORGNAME/REPONAME/pulls/211
 
 
 def download_code_from_MR(mr_url):
@@ -99,8 +142,8 @@ def verify_github_token(github_url):
     headers = {"Authorization" : f"token {GITHUB_API_TOKEN}"}
     res = requests.get(git_verify_url,headers=headers)
     if res.status_code != 200:
-        exit(colored(f"[X] Gitlab Token is Invalid: {res.status_code}","red"))
-    print(colored("[-] Gitlab Token successfully validated","light_magenta"))
+        exit(colored(f"[X] Github Token is Invalid: {res.status_code}","red"))
+    print(colored("[-] Github Token successfully validated","light_magenta"))
 
 
 
@@ -120,7 +163,7 @@ def main():
     if args.pullrequest_url:
         verify_github_token(args.pullrequest_url)
         download_code_from_pr_url(args.pullrequest_url)
-        #Example_Commit_URL = "https://github.host.com/projectname/subproject/-/commit/commithash"
+        #Example_Commit_URL = "https://github.host.com/ORGNAME/REPONAME/pulls/pullnumber"
 
     if args.commit_url:
         verify_github_token(args.commit_url)
