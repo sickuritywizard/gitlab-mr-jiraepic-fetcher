@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 
 import os
-from heapq import merge
-from math import trunc
 
 import requests
 from urllib.parse import urlparse, quote
-
-from gitdb.util import exists
 from termcolor import colored
 import argparse,re
 import base64
-import pdb
 
 
 def get_args():
