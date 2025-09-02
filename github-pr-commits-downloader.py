@@ -46,7 +46,9 @@ def download_code_from_pr_url(pr_url):
     try:
         os.mkdir(results_dir)
     except Exception as e:
-        exit(f"[X] Directory Already Exists: {results_dir}")
+        print(colored("[X] Directory Already Exists: ","red"),colored(f"{results_dir}","light_red"))
+        exit(1)
+
     os.chdir(results_dir)
 
     #Get Base URL
@@ -77,10 +79,10 @@ def download_code_from_pr_url(pr_url):
             file_content_base64 = response.get("content").replace("\n", "")
             try:
                 file_content = base64.b64decode(file_content_base64).decode()
-                print(f"[File]: {file_name}")
+                print(colored("[File] ","light_grey"),colored(f"{file_name}","light_blue"))
             except UnicodeDecodeError as e:
                 file_content = base64.b64decode(file_content_base64).decode('utf-8', errors='replace')
-                print(colored(f"[Error] Failed Decoding: {file_name} (Saved file without decoding)", "red"))
+                print(colored("[Error]","red"),colored(f"Failed Decoding: {file_name} (Saved file without decoding)","light_red"))
 
             folder = os.path.dirname(file_name)
             os.makedirs(folder, exist_ok=True)
@@ -88,7 +90,8 @@ def download_code_from_pr_url(pr_url):
                 fp.write(file_content)
 
 
-    print(f"[-] Total Files Downloaded: {count}")
+    print(colored("\n[Completed] ","yellow"),colored(f"Total Files Downloaded: {count}","light_cyan"))
+
     os.chdir(parent_dir)
 
 
