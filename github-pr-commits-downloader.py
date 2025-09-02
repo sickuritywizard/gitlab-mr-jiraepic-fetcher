@@ -53,26 +53,39 @@ def download_code_from_pr_url(pr_url):
     base_url = get_github_api_baseurl(pr_url)
     pr_uri_list = pr_url.split("/")[3:]
     org,repo,pulls,pull_number = pr_uri_list[0],pr_uri_list[1],"pulls",pr_uri_list[3]  #URL has pull, but api requires pulls
-    fetch_pr_api = f"{base_url}/repos/{org}/{repo}/{pulls}/{pull_number}/files"
-    headers = {"Authorization": f"token {GITHUB_API_TOKEN}", "Accept": "application/vnd.github.v3.diff"}
-    response = requests.get(fetch_pr_api, headers=headers).json()
 
-    count = 0
-    for item in response:
-        count+=1
-        file_name = item.get("filename")
-        changed_file_sha = item.get("sha")
+    #Git Default Returns 30 results, so loop to get all pages
+    page=0
+    completed = False
+    while True:
+        page +=1
+        fetch_pr_api = f"{base_url}/repos/{org}/{repo}/{pulls}/{pull_number}/files?page={page}"
+        headers = {"Authorization": f"token {GITHUB_API_TOKEN}", "Accept": "application/vnd.github.v3.diff"}
+        response = requests.get(fetch_pr_api, headers=headers).json()
+        res_content_len = len(response)
+        if len(response) == 0:
+            break
 
-        fetch_file_api = f"{base_url}/repos/vcf/mops/git/blobs/{changed_file_sha}"
-        response = requests.get(fetch_file_api, headers=headers).json()
-        file_content_base64 = response.get("content").replace("\n", "")
-        file_content = base64.b64decode(file_content_base64).decode()
-        print(f"[File]: {file_name}")
+        count = 0
+        for item in response:
+            count+=1
+            file_name = item.get("filename")
+            changed_file_sha = item.get("sha")
 
-        folder = os.path.dirname(file_name)
-        os.makedirs(folder, exist_ok=True)
-        with open(file_name, "w") as fp:
-            fp.write(file_content)
+            fetch_file_api = f"{base_url}/repos/vcf/mops/git/blobs/{changed_file_sha}"
+            response = requests.get(fetch_file_api, headers=headers).json()
+            file_content_base64 = response.get("content").replace("\n", "")
+            try:
+                file_content = base64.b64decode(file_content_base64).decode()
+                print(f"[File]: {file_name}")
+            except UnicodeDecodeError as e:
+                file_content = base64.b64decode(file_content_base64).decode('utf-8', errors='replace')
+                print(colored(f"[Error] Failed Decoding: {file_name} (Saved file without decoding)", "red"))
+
+            folder = os.path.dirname(file_name)
+            os.makedirs(folder, exist_ok=True)
+            with open(file_name, "w") as fp:
+                fp.write(file_content)
 
 
     print(f"[-] Total Files Downloaded: {count}")
